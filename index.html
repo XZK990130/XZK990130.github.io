@@ -1,42 +1,116 @@
-## Change Themes
+---
+标题：virtualbox的安装
+作者：hstc.xiaozekai@outlook.com
+描述：这篇博客主要介绍如何在debian 12上安装virtualbox
+---
 
-Typora has 5~6 built-in themes. Changing writing theme can be done by selecting theme under the `theme` menu bar. You could also download, install, modify or write your own custom theme to stylize Typora.
+# virtualbox的安装
 
-Typora use CSS to stylish all contents, each theme under `theme` menu is one `.css` files under "typora's theme folder". So, briefly speaking, you could add/modify themes by adding/modifying correspond css files under "typora's theme folder".
+操作系统：debian 12
 
-## Get Typora Themes
+## 下载virtualbox
 
-We have an office website [Typora Theme Gallery](http://theme.typora.io) for designers/developers to share their custom themes with others. You could download theme from there.
+官网：https://www.virtualbox.org/
 
-## Install Custom Themes
+在官网上找到下载入口，选择对应的操作系统版本：
 
-1. Open Theme Folder. (see instructions below)
-2. Copy or move `.css` file and related resources, like fonts or images, into the newly opened folder.
-3. Restart typora, then select it from `Themes` menu.
+![jietu](./imgs/1.png)
 
-## Open Theme Folder
+点击下载，virtualbox的deb文件将会被下载到你的计算机上。
 
-### macOS
+## 安装virtualbox
 
-Open preference panel by <code>cmd+`</code>, then click "Open Theme Folder"
+因为下载下来的是virtualbox的deb文件，因此需要通过dpkg命令来安装virtualbox。
 
-<img src="img/Snip20160921_1.png" style="zoom:50%" />
+```shell
+sudo dpkg -i virtualbox-7.1_7.1.4-165100~Debian~bookworm_amd64.deb
+```
 
-### Windows/Linux
+第一次执行dpkg命令会安装失败，因为virtualbox的配置需要依赖其它的一些软件包，而这些软件包还没有被安装。
 
-Open preference panel from `File` → `Preference` from menubar, then click "Open Theme Folder":
+![jietu](./imgs/2.png)
 
-<img src="img/Snip20160921_2.png" style="zoom:50%" />
+因此，我们需要执行下面的apt命令来修复依赖关系：
 
-## Modify Current Styles
+```shell
+# 更新软件包列表，确保下载最新的软件包，以避免依赖问题
+sudo apt update
+# 同 sudo apt install -f，修复依赖关系，下载并配置virtualbox需要的软件包，并重新安装配置virtualbox
+sudo apt --fix-broken install
+```
 
-Sometimes, you may just want to change font family for all themes, for change font-color for headings for a specific themes. In this case, you do not need to copy/modify a whole exiting css file, just [Add Custom CSS](https://support.typora.io/Add-Custom-CSS/) is enough. In brief:
+这一次还是安装失败，报错信息如下：
 
-- Create & write a `base.user.css` under theme folder, the css rules inside it will be applied to all themes.
-- Create & write a `{theme-css-name}.user.css` under theme folder, the css rules inside it will only be applied to theme file `{theme-css-name}.css`.
+```shell
+This system is currently not set up to build kernel modules.
+Please install the gcc make perl packages from your distribution.
+Please install the Linux kernel "header" files matching the current kernel
+for adding new hardware support to the system.
+The distribution packages containing the headers are probably:
+    linux-headers-amd64 linux-headers-6.1.0-28-amd64
+This system is currently not set up to build kernel modules.
+Please install the gcc make perl packages from your distribution.
+Please install the Linux kernel "header" files matching the current kernel
+for adding new hardware support to the system.
+The distribution packages containing the headers are probably:
+    linux-headers-amd64 linux-headers-6.1.0-28-amd64
 
-Please note that the built-in CSS theme files will get overwritten completely on typora version up, so, write your custom css into `*.user.css`, instead of the existing files, will prevent your modifications from being lost after update.
+There were problems setting up VirtualBox.  To re-start the set-up process, run
+  /sbin/vboxconfig
+as root.  If your system is using EFI Secure Boot you may need to sign the
+kernel modules (vboxdrv, vboxnetflt, vboxnetadp, vboxpci) before you can load
+them. Please see your Linux system's documentation for more information.
+Setting up at-spi2-core (2.46.0-5) ...
+Processing triggers for libc-bin (2.36-9+deb12u9) ...
+```
 
-## Write My Own Theme
+virtualbox需要构建内核模块以支持虚拟化，但是系统此时缺少编译内核模块所需的工具和头文件，因此需要下载/安装
 
-Please refer to [Write Custom Theme for Typora](http://theme.typora.io/doc/Write-Custom-Theme/).
+- 编译工具
+
+  gcc (GNU编译器集合)、make (构建工具)、perl (脚本语言)
+
+- 内核头文件
+
+  系统中没有与当前运行内核版本匹配的内核头文件
+
+执行下面命令下载所需要的编译/构建工具和内核头文件
+
+```shell
+sudo apt install build-essential linux-headers-$(uname -r)
+```
+
+这次安装成功
+
+![jietu](./imgs/3.png)
+
+当然，如果你的计算机上原本就安装了gcc，那么这一步还可能失败，因为virtualbox构建内核模块实现虚拟化，需要使用合适版本的gcc编译器，最好是和Linux内核编译器版本相同 (build-essential包里面的gcc版本和Linux内核编译器版本相同)。
+
+```shell
+# 查看当前Linux内核gcc版本
+cat /proc/version
+# 查看当前gcc版本
+gcc --version
+```
+
+![jietu](./imgs/5.png)
+
+可以执行下面命令选择你想使用的gcc编译器：
+
+```shell
+# 删除原本指向gcc-11的软链接
+sudo rm -f /usr/bin/gcc
+# 新建软链接，指向gcc-12
+sudo ln -s /usr/bin/gcc-12 /usr/bin/gcc
+```
+
+![jietu](./imgs/6.png)
+
+如果修改了gcc版本后还是安装失败，可能需要先卸载virtualbox，再重新安装virtualbox
+
+```shell
+sudo dpkg -r virtualbox-7.1
+sudo dpkg -i virtualbox-7.1_7.1.4-165100~Debian~bookworm_amd64.deb
+```
+
+在ubuntu22.04/ubuntu24.04上安装virtualbox，和在debian上的步骤是一样的，可能遇到的问题和解决方法也是一样的，亦可参考此文！
